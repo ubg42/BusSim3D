@@ -212,25 +212,10 @@ function StartUnityInstance_IfUnloaded() {
     StartUnityInstance();
 }
 
-function LocalHost() {
-    const host = window.location.hostname;
 
-    return (
-        host === "localhost" ||
-        host === "127.0.0.1"
-    );
-}
 
 async function InitYSDK() {
     try {
-        if (LocalHost()) {
-            console.log("Localhost detected - starting Unity without Yandex SDK");
-
-            await unityLoaderPromise;
-            StartUnityInstance_IfUnloaded();
-            return;
-        }
-
         console.log("Waiting for Yandex SDK...");
 
         if (typeof YaGames === "undefined") {
@@ -268,8 +253,6 @@ async function InitYSDK() {
         console.error("CRASH Initialization SDK:", e);
     }
 
-    // IMPORTANT:
-    // Wait until the Unity loader has actually loaded.
     try {
         await unityLoaderPromise;
         StartUnityInstance_IfUnloaded();
@@ -278,6 +261,7 @@ async function InitYSDK() {
     }
 }
 
+InitYSDK();
 
         function FullAdShow() {
             try {
