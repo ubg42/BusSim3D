@@ -138,13 +138,17 @@
             });
         }
 
-let StartUnityInstance = null;
-let myGameInstance = null;
-let ysdk = null;
-let player = null;
-let payments = null;
-let initGame = false;
-let nowFullAdOpen = false;
+function NotAuthorized() {
+    let authJson = {
+        "playerAuth": "rejected",
+        "playerName": "unauthorized",
+        "playerId": "unauthorized",
+        "playerPhoto": "unknown",
+        "payingStatus": "unknown"
+    };
+
+    return JSON.stringify(authJson);
+}
 
 let unityLoaderReady = false;
 let sdkReady = false;
@@ -214,45 +218,58 @@ function StartUnityInstance_IfUnloaded() {
 
 
 
+window.InitGame = function () {
+    console.log("Init Game Success");
+    initGame = true;
+
+    if (nowFullAdOpen === true && myGameInstance !== null) {
+        myGameInstance.SendMessage(
+            "YandexGame",
+            "OpenFullAd"
+        );
+    }
+};
 async function InitYSDK() {
     try {
-        console.log("Waiting for Yandex SDK...");
+        console.log("Trying to initialize Yandex SDK...");
 
-        if (typeof YaGames === "undefined") {
-            throw new Error(
-                "YaGames is not defined. Yandex Games SDK failed to load."
-            );
+        // Yandex SDK is optional.
+        if (typeof YaGames !== "undefined") {
+            ysdk = await YaGames.init();
+
+            console.log("Yandex SDK initialized");
+            sdkReady = true;
+
+            // Only use Yandex features when SDK exists.
+            try {
+                FullAdShow();
+            } catch (e) {
+                console.warn("Fullscreen ad unavailable:", e);
+            }
+
+            cloudSaves = await LoadCloud();
+            console.log("Init Storage ysdk");
+
+            paymentsData = await GetPayments();
+            console.log("Init Payments ysdk");
+
+            InitLeaderboards();
+            console.log("Init Leaderboards");
+
+            environmentData = await RequestingEnvironmentData();
+            console.log("Init Envir ysdk");
+
+            playerData = await InitPlayer();
+            console.log("Init Player ysdk");
+        } else {
+            console.log("Yandex SDK not found - running without Yandex");
         }
 
-        console.log("Initializing Yandex SDK...");
-
-        ysdk = await YaGames.init();
-
-        console.log("Yandex SDK initialized");
-
-        sdkReady = true;
-
-        FullAdShow();
-
-        cloudSaves = await LoadCloud();
-        console.log("Init Storage ysdk");
-
-        paymentsData = await GetPayments();
-        console.log("Init Payments ysdk");
-
-        InitLeaderboards();
-        console.log("Init Leaderboards");
-
-        environmentData = await RequestingEnvironmentData();
-        console.log("Init Envir ysdk");
-
-        playerData = await InitPlayer();
-        console.log("Init Player ysdk");
-
     } catch (e) {
-        console.error("CRASH Initialization SDK:", e);
+        console.error("Yandex SDK initialization failed:", e);
     }
 
+    // Always start Unity, regardless of Yandex SDK.
     try {
         await unityLoaderPromise;
         StartUnityInstance_IfUnloaded();
@@ -854,16 +871,16 @@ function InitPlayer(sendback) {
     });
 }
 
-function NotAuthorized() {
-    let authJson = {
-        "playerAuth": "rejected",
-        "playerName": "unauthorized",
-        "playerId": "unauthorized",
-        "playerPhoto": "unknown",
-        "payingStatus": player.getPayingStatus()
-    };
-    return JSON.stringify(authJson);
-}
+let StartUnityInstance = null;
+let myGameInstance = null;
+let ysdk = null;
+let player = null;
+let payments = null;
+let initGame = false;
+let nowFullAdOpen = false;
+
+let unityLoaderReady = false;
+let sdkReady = false;
 
 function OpenAuthDialog() {
     if (ysdk !== null) {
