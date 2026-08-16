@@ -278,50 +278,6 @@ async function InitYSDK() {
     }
 }
 
-InitYSDK();
-        async function InitYSDK() {
-            try {
-                if (LocalHost()) return;
-
-                console.log('Init Yandex SDK');
-                ysdk = await YaGames.init();
-
-                FullAdShow(); // First ad true
-
-                // Additional init modules
-cloudSaves = await LoadCloud();
-console.log('Init Storage ysdk');
-
-paymentsData = await GetPayments();
-console.log('Init Payments ysdk');
-
-InitLeaderboards();
-console.log('Init Leaderboards');
-
-environmentData = await RequestingEnvironmentData();
-console.log('Init Envir ysdk');
-
-playerData = await InitPlayer();
-console.log('Init Player ysdk');
-
-
-            } catch (e) {
-                console.error('CRASH Initialization SDK: ', e);
-            }
-
-            StartUnityInstance_IfUnloaded();
-        }
-
-        function InitGame() {
-            console.log('Init Game Success');
-            initGame = true;
-
-            if (nowFullAdOpen == true && myGameInstance != null) {
-                myGameInstance.SendMessage('YandexGame', 'OpenFullAd');
-            }
-
-            // Additional start modules
-        }
 
         function FullAdShow() {
             try {
@@ -941,7 +897,6 @@ function OpenAuthDialog() {
 }
 
 
-        document.body.appendChild(script);
     </script>
 </body>
 </html>
