@@ -138,46 +138,147 @@
             });
         }
 
-        let StartUnityInstance;
-        let myGameInstance = null;
-        let ysdk = null;
-        let player = null;
-        let payments = null;
-        let initGame = false;
-        let nowFullAdOpen = false;
+let StartUnityInstance = null;
+let myGameInstance = null;
+let ysdk = null;
+let player = null;
+let payments = null;
+let initGame = false;
+let nowFullAdOpen = false;
 
-        const script = document.createElement("script");
-        script.src = loaderUrl;
-        script.onload = () => {
-            StartUnityInstance = function () {
-                createUnityInstance(canvas, config, (progress) => {
+let unityLoaderReady = false;
+let sdkReady = false;
+
+const unityLoaderPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = loaderUrl;
+
+    script.onload = () => {
+        console.log("Unity loader loaded");
+
+        StartUnityInstance = function () {
+            if (myGameInstance !== null) {
+                return;
+            }
+
+            console.log("Starting Unity...");
+
+            createUnityInstance(
+                canvas,
+                config,
+                (progress) => {
                     spinner.style.display = "none";
                     progressBarEmpty.style.display = "";
                     progressBarFull.style.width = `${100 * progress}%`;
-                }).then((unityInstance) => {
-                    myGameInstance = unityInstance;
-                    loadingCover.style.display = "none";
-                }).catch((message) => {
-                    console.error(message);
-                });
-            };
-            if (LocalHost())
-                StartUnityInstance_IfUnloaded();
+                }
+            )
+            .then((unityInstance) => {
+                myGameInstance = unityInstance;
+                loadingCover.style.display = "none";
+
+                console.log("Unity started successfully");
+
+                if (ysdk && ysdk.features && ysdk.features.LoadingAPI) {
+                    ysdk.features.LoadingAPI.ready();
+                }
+            })
+            .catch((message) => {
+                console.error("Unity initialization failed:", message);
+            });
         };
 
-        function StartUnityInstance_IfUnloaded() {
-            if (spinner.style.display !== "none")
-                StartUnityInstance();
+        unityLoaderReady = true;
+        resolve();
+    };
+
+    script.onerror = (error) => {
+        console.error("Failed to load Unity loader:", error);
+        reject(error);
+    };
+
+    document.body.appendChild(script);
+});
+
+function StartUnityInstance_IfUnloaded() {
+    if (myGameInstance !== null) {
+        return;
+    }
+
+    if (!unityLoaderReady || typeof StartUnityInstance !== "function") {
+        console.log("Waiting for Unity loader...");
+        return;
+    }
+
+    StartUnityInstance();
+}
+
+function LocalHost() {
+    const host = window.location.hostname;
+
+    return (
+        host === "localhost" ||
+        host === "127.0.0.1"
+    );
+}
+
+async function InitYSDK() {
+    try {
+        if (LocalHost()) {
+            console.log("Localhost detected - starting Unity without Yandex SDK");
+
+            await unityLoaderPromise;
+            StartUnityInstance_IfUnloaded();
+            return;
         }
 
-        function LocalHost() {
-            var host = window.location.hostname;
-            if (host == "localhost" || host == "127.0.0.1")
-                return true;
-            else return false;
+        console.log("Waiting for Yandex SDK...");
+
+        if (typeof YaGames === "undefined") {
+            throw new Error(
+                "YaGames is not defined. Yandex Games SDK failed to load."
+            );
         }
 
-        InitYSDK();
+        console.log("Initializing Yandex SDK...");
+
+        ysdk = await YaGames.init();
+
+        console.log("Yandex SDK initialized");
+
+        sdkReady = true;
+
+        FullAdShow();
+
+        cloudSaves = await LoadCloud();
+        console.log("Init Storage ysdk");
+
+        paymentsData = await GetPayments();
+        console.log("Init Payments ysdk");
+
+        InitLeaderboards();
+        console.log("Init Leaderboards");
+
+        environmentData = await RequestingEnvironmentData();
+        console.log("Init Envir ysdk");
+
+        playerData = await InitPlayer();
+        console.log("Init Player ysdk");
+
+    } catch (e) {
+        console.error("CRASH Initialization SDK:", e);
+    }
+
+    // IMPORTANT:
+    // Wait until the Unity loader has actually loaded.
+    try {
+        await unityLoaderPromise;
+        StartUnityInstance_IfUnloaded();
+    } catch (e) {
+        console.error("Unity loader failed:", e);
+    }
+}
+
+InitYSDK();
         async function InitYSDK() {
             try {
                 if (LocalHost()) return;
